@@ -71,7 +71,19 @@ namespace Kesco.Lib.DALC
                     value = dbReader.GetString(ordinal);
                     break;
                 case "System.DateTime":
-                    value = dbReader.GetDateTime(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (DateTime?)null : dbReader.GetDateTime(ordinal);
+                    break;
+                case "System.Double":
+                    value = dbReader.IsDBNull(ordinal) ? (double?)null : dbReader.GetDouble(ordinal);
+                    break;
+                case "System.Decimal":
+                    value = dbReader.IsDBNull(ordinal) ? (decimal?)null : dbReader.GetDecimal(ordinal);
+                    break;
+                case "System.Boolean":
+                    value = dbReader.IsDBNull(ordinal) ? (bool?)null : dbReader.GetBoolean(ordinal);
+                    break;
+                case "System.Byte":
+                    value = dbReader.IsDBNull(ordinal) ? (byte?)null : dbReader.GetByte(ordinal);
                     break;
             }
             return value;
@@ -92,12 +104,13 @@ namespace Kesco.Lib.DALC
 
             foreach (var key in args.Keys)
             {
-                if (args[key] != null && args[key].GetType().Equals(typeof (object[])))
-                {
-                    vals = (object[]) args[key];
-                    _type = GetStringValue((ParameterTypes) vals[1]);
+                if (args[key] != null && args[key].GetType().Equals(typeof(object[])))
+                {                    
+                    vals = (object[])args[key];
+                    _type = GetStringValue((ParameterTypes)vals[1]);
                     type = Type.GetType(_type);
-                    if (vals[0].ToString().Length == 0 && !type.Equals(typeof (string)))
+                    if ((vals[0].ToString().Length == 0 && !type.Equals(typeof(string)))
+                        || (type.Equals(typeof(DateTime)) && vals[0] != null && vals[0].Equals(DateTime.MinValue)))
                         cmd.Parameters.AddWithValue(key, DBNull.Value);
                     else
                     {
@@ -106,7 +119,14 @@ namespace Kesco.Lib.DALC
                     }
                 }
                 else
-                    cmd.Parameters.AddWithValue(key, args[key] == null ? DBNull.Value : args[key]);
+                {
+                    if (args[key] == null
+                        || (args[key].GetType().Equals(typeof(DateTime)) && args[key].Equals(DateTime.MinValue))
+                        )
+                        cmd.Parameters.AddWithValue(key, DBNull.Value);
+                    else
+                        cmd.Parameters.AddWithValue(key, args[key]);
+                }
             }
         }
 
@@ -244,13 +264,19 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
 
             #endregion
 
-            var da = new SqlDataAdapter(sql, cn);
-            da.SelectCommand.CommandType = ctype;
+            SqlConnection conn = null;
+            SqlDataReader dr = null;
+            DataTable dtSchema = null;
+
+            conn = new SqlConnection(cn);
+            
+            var cm = new SqlCommand(sql, conn);
+            cm.CommandType = ctype;
 
             #region Заполняем коллекцию переданными параметрами, обязательными для запроса
 
             if (args != null)
-                FillQueryArgsCollection(args, da.SelectCommand);
+                FillQueryArgsCollection(args, cm);
 
             #endregion
 
@@ -262,21 +288,16 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             var index = (pageNum - 1)*itemsPerPage;
 
 
-            SqlConnection conn = null;
-            SqlDataReader dr = null;
-            DataTable dtSchema = null;
+           
             _sRez = "0";
             try
             {
                 if (pageNum > 0)
                 {
                     #region Если требуется постраничная разбивка данных используем DataReader
-
-                    conn = new SqlConnection(cn);
-                    da.SelectCommand.Connection = conn;
+                    
                     conn.Open();
-
-                    dr = da.SelectCommand.ExecuteReader(CommandBehavior.CloseConnection);
+                    dr = cm.ExecuteReader(CommandBehavior.CloseConnection);
                     dtSchema = dr.GetSchemaTable();
 
                     if (dtSchema != null)
@@ -338,11 +359,18 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                     #endregion
                 }
                 else
-                    da.Fill(dt);
+                {
+                    cm.CommandTimeout = 60;
+                    conn.Open();
+                    dr = cm.ExecuteReader(CommandBehavior.CloseConnection);
+                    dt.Load(dr);
+                   
+                }
+                    
             }
             catch (Exception ex)
             {
-                var dex = new DetailedException(ex.Message, ex, da.SelectCommand);
+                var dex = new DetailedException(ex.Message, ex, cm);
                 Logger.WriteEx(dex);
                 throw dex;
             }
@@ -589,9 +617,11 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                     {
                         cmd.CommandType = type;
                         if (parameters != null)
-                            foreach (var p in parameters)
-                                cmd.Parameters.AddWithValue(p.Key, p.Value);
-
+                            FillQueryArgsCollection(parameters, cmd);
+                            //foreach (var p in parameters)
+                            //    cmd.Parameters.AddWithValue(p.Key, p.Value);
+                       
+                          
                         if (parametersOut != null)
                             foreach (var p in parametersOut)
                             {

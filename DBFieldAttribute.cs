@@ -7,6 +7,11 @@ namespace Kesco.Lib.DALC
     /// </summary>
     public class DBFieldAttribute : Attribute
     {
+        /// <summary>
+        ///  Данный конструктор использовать только для инициализации поля первичного ключа
+        /// </summary>
+        /// <param name="fieldName">Название поля первичного ключа</param>
+        /// <param name="defaultValue">Значение по-умолчанию</param>
         public DBFieldAttribute(string fieldName, object defaultValue)
         {
             FieldName = fieldName;
@@ -18,7 +23,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///     Конструктор
+        ///     Конструктор для любого поля, кроме первичного ключа
         /// </summary>
         /// <param name="fieldName">Название поля БД</param>
         /// <param name="isPK">Поле является первичным ключом</param>
