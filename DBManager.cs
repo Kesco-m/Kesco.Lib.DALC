@@ -68,7 +68,7 @@ namespace Kesco.Lib.DALC
                     value = dbReader.IsDBNull(ordinal) ? (int?)null : dbReader.GetInt32(ordinal);
                     break;
                 case "System.String":
-                    value = dbReader.GetString(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? "": dbReader.GetString(ordinal);
                     break;
                 case "System.DateTime":
                     value = dbReader.IsDBNull(ordinal) ? (DateTime?)null : dbReader.GetDateTime(ordinal);
