@@ -20,8 +20,17 @@ namespace Kesco.Lib.DALC
         /// </summary>
         public enum ParameterTypes
         {
+            /// <summary>
+            /// Int32
+            /// </summary>
             [StringValue("System.Int32")] Int32 = 1,
+            /// <summary>
+            /// Decimal
+            /// </summary>
             [StringValue("System.Decimal")] Decimal = 2,
+            /// <summary>
+            /// String
+            /// </summary>
             [StringValue("System.String")] String = 3
         }
 
@@ -447,7 +456,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             catch (SqlException ex)
             {
                 StringBuilder sb = new StringBuilder();
-
+                var fl = false;
                 foreach (SqlError e in ex.Errors)
                 {
                     if (e.Number != 3609)//Транзакция завершилась в триггере. Выполнение пакета прервано.
@@ -456,7 +465,11 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
 
                         if (e.Number == 229 || e.Number == 230)
                         {
-                            sb.Append("У Вас нет прав для данной операции!");
+                            if (fl) continue;
+                            sb.Append("У Вас нет прав для данной операции! ");
+                            sb.Append(Environment.NewLine);
+                            sb.Append("You are not authorized for this operation!");
+                            fl = true;
                         }
                         else
                             sb.Append(e.Message);
@@ -544,6 +557,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             catch (SqlException ex)
             {
                 StringBuilder sb = new StringBuilder();
+                var fl = false;
                 foreach (SqlError e in ex.Errors)
                 {
                     if (e.Number != 3609)//Транзакция завершилась в триггере. Выполнение пакета прервано.
@@ -551,7 +565,11 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         if (sb.Length > 0) sb.Append(Environment.NewLine);
                         if (e.Number == 229 || e.Number == 230)
                         {
-                            sb.Append("У Вас нет прав для данной операции!");
+                            if (fl) continue;
+                            sb.Append("У Вас нет прав для данной операции! ");
+                            sb.Append(Environment.NewLine);
+                            sb.Append("You are not authorized for this operation!");
+                            fl = true;
                         }
                         else
                             sb.Append(e.Message);

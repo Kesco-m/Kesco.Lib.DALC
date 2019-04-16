@@ -26,10 +26,9 @@ namespace Kesco.Lib.DALC
         ///     Конструктор для любого поля, кроме первичного ключа
         /// </summary>
         /// <param name="fieldName">Название поля БД</param>
-        /// <param name="isPK">Поле является первичным ключом</param>
-        /// <param name="isLinkParent">Ссылка на родительскую таблицу</param>
+        /// <param name="paramName">Название параметра в sql-запросе</param>
         /// <param name="isUpdateble">Поле является обновляемым</param>
-        /// /// <param name="paramName">Название параметра в sql-запросе</param>
+        /// <param name="isLinkParent">Ссылка на родительскую таблицу</param>
         public DBFieldAttribute(string fieldName, string paramName = "", bool isUpdateble = true, bool isLinkParent = false)
         {
             FieldName = fieldName;
