@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using Kesco.Lib.Log;
@@ -9,45 +8,67 @@ using Kesco.Lib.Log;
 namespace Kesco.Lib.DALC
 {
     /// <summary>
-    ///  Класс абстрагирует работу с несколькими классами SqlDataReader и SqlConnection, объединяя их в единое целое.
+    ///     Класс абстрагирует работу с несколькими классами SqlDataReader и SqlConnection, объединяя их в единое целое.
     /// </summary>
     /// <remarks>
-    /// Паттерн проектирования "фасад". Рекомендуется использовать в конструкции "using"
-    /// Существует программа, преобразования запроса или ХП в класс сущности и начитки данных:
-    /// https://titan.kescom.com:8443/svn/web/GeneratorORM
+    ///     Паттерн проектирования "фасад". Рекомендуется использовать в конструкции "using"
+    ///     Существует программа, преобразования запроса или ХП в класс сущности и начитки данных:
+    ///     https://titan.kescom.com:8443/svn/web/GeneratorORM
     /// </remarks>
     /// <example>
-    ///  Примеры использования и юнит тесты: Kesco.App.UnitTests.DalcTests.DalcTest
+    ///     Примеры использования и юнит тесты: Kesco.App.UnitTests.DalcTests.DalcTest
     /// </example>
     public class DBReader : IDataReader
     {
         /// <summary>
-        ///  Конструктор DBReader
+        ///     Предоставляет подключение к базе данных SQL Server.
+        /// </summary>
+        private readonly SqlConnection _connect;
+
+        /// <summary>
+        ///     Хранит ссылку на выходные праметры
+        /// </summary>
+        private readonly Dictionary<string, object> _parametersOut;
+
+        /// <summary>
+        ///     Представляет инструкцию Transact-SQL или хранимую процедуру, выполняемую над базой данных SQL Server
+        /// </summary>
+        private SqlCommand _command;
+
+        /// <summary>
+        ///     Предоставляет способ чтения потока строк последовательного доступа из базы данных SQL Server
+        /// </summary>
+        private SqlDataReader _reader;
+
+        /// <summary>
+        ///     Конструктор DBReader
         /// </summary>
         /// <param name="comdText">Текст запроса или название ХП</param>
         /// <param name="type">Тип команыды - текст или хранимая процедура</param>
         /// <param name="connectionString">Строка подключения</param>
         /// <param name="parameters">Входные значения</param>
-        public DBReader(string comdText, CommandType type, string connectionString, Dictionary<string, object> parameters = null)
+        public DBReader(string comdText, CommandType type, string connectionString,
+            Dictionary<string, object> parameters = null)
         {
             _connect = new SqlConnection(connectionString);
             ExecuteReader(comdText, type, parameters);
         }
 
         /// <summary>
-        ///  Конструктор DBReader
+        ///     Конструктор DBReader
         /// </summary>
         /// <remarks>
-        ///  Для получения OUTPUT параметров необходимо принудительно закрыть ридер - вызвать метод Close(),
-        ///  до закрытия параметры остаются без значения, это происходит по тому что Return и OUTPUT параметры
-        ///  формируются по окончанию работы ХП, пока открыт SqlDataReader работа ХП считается не завершенной.
+        ///     Для получения OUTPUT параметров необходимо принудительно закрыть ридер - вызвать метод Close(),
+        ///     до закрытия параметры остаются без значения, это происходит по тому что Return и OUTPUT параметры
+        ///     формируются по окончанию работы ХП, пока открыт SqlDataReader работа ХП считается не завершенной.
         /// </remarks>
         /// <param name="comdText">Текст запроса или название ХП</param>
         /// <param name="type">Тип команыды - текст или хранимая процедура</param>
         /// <param name="connectionString">Строка подключения</param>
         /// <param name="parameters">Входные значения</param>
         /// <param name="parametersOut">Выходные параметры, для хп автоматически формируется возвращаемое значение(@RETURN_VALUE)</param>
-        public DBReader(string comdText, CommandType type, string connectionString, Dictionary<string, object> parameters, Dictionary<string, object> parametersOut)
+        public DBReader(string comdText, CommandType type, string connectionString,
+            Dictionary<string, object> parameters, Dictionary<string, object> parametersOut)
         {
             _connect = new SqlConnection(connectionString);
             _parametersOut = parametersOut;
@@ -55,10 +76,10 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Конструктор DBReader для часто используемой команды с единственным параметром @id
+        ///     Конструктор DBReader для часто используемой команды с единственным параметром @id
         /// </summary>
         /// <remarks>
-        ///  Имя SQL параметра должно быть строго @id 
+        ///     Имя SQL параметра должно быть строго @id
         /// </remarks>
         /// <param name="comdText">Текст запроса или название ХП, должны содержать строго один параметр @id в нижнем регистре</param>
         /// <param name="id"> Значение параметра @id типа int</param>
@@ -68,12 +89,12 @@ namespace Kesco.Lib.DALC
         {
             _connect = new SqlConnection(connectionString);
 
-            var sqlParams = new Dictionary<string, object> { { "@id", id } };
+            var sqlParams = new Dictionary<string, object> {{"@id", id}};
             ExecuteReader(comdText, type, sqlParams);
         }
 
         /// <summary>
-        ///  Конструктор DBReader для небольшого количества параметров
+        ///     Конструктор DBReader для небольшого количества параметров
         /// </summary>
         /// <param name="comdText">Текст запроса или название ХП, должны содержать строго один параметр @id в нижнем регистре</param>
         /// <param name="type">Тип команыды - текст или хранимая процедура</param>
@@ -85,33 +106,24 @@ namespace Kesco.Lib.DALC
 
             var sqlParams = new Dictionary<string, object>(pars.Length);
             foreach (var p in pars)
-                 sqlParams.Add(p.Item1, p.Item2);
+                sqlParams.Add(p.Item1, p.Item2);
 
             ExecuteReader(comdText, type, sqlParams);
         }
 
         /// <summary>
-        ///  Предоставляет подключение к базе данных SQL Server.
+        ///     Освобождает ресурсы, используемые объектом DBReader
         /// </summary>
-        private readonly SqlConnection _connect;
+        public void Dispose()
+        {
+            ReleaseResources();
+
+            // если высвободили ресурсы вручную или через using, то финализатор не вызываем
+            GC.SuppressFinalize(this);
+        }
 
         /// <summary>
-        ///  Предоставляет способ чтения потока строк последовательного доступа из базы данных SQL Server
-        /// </summary>
-        private SqlDataReader _reader;
-
-        /// <summary>
-        ///  Представляет инструкцию Transact-SQL или хранимую процедуру, выполняемую над базой данных SQL Server
-        /// </summary>
-        private SqlCommand _command;
-
-        /// <summary>
-        ///  Хранит ссылку на выходные праметры
-        /// </summary>
-        private readonly Dictionary<string, object> _parametersOut;
-
-        /// <summary>
-        /// Выполнить SQL инструкцию и получить DataReader
+        ///     Выполнить SQL инструкцию и получить DataReader
         /// </summary>
         /// <param name="comdText">Текст запроса или название ХП</param>
         /// <param name="type">Тип команыды - текст или хранимая процедура</param>
@@ -120,12 +132,11 @@ namespace Kesco.Lib.DALC
         {
             try
             {
-                using (_command = new SqlCommand(comdText, _connect) { CommandType = type })
+                using (_command = new SqlCommand(comdText, _connect) {CommandType = type})
                 {
-
                     if (parameters != null)
                         foreach (var p in parameters)
-                              _command.Parameters.AddWithValue(p.Key, p.Value ?? DBNull.Value);
+                            _command.Parameters.AddWithValue(p.Key, p.Value ?? DBNull.Value);
 
                     _connect.Open();
                     _reader = _command.ExecuteReader(CommandBehavior.CloseConnection);
@@ -133,7 +144,7 @@ namespace Kesco.Lib.DALC
             }
             catch (Exception ex)
             {
-                DetailedException dex = new DetailedException(ex.Message, ex, _command);
+                var dex = new DetailedException(ex.Message, ex, _command);
                 Logger.WriteEx(dex);
                 Dispose();
                 throw dex;
@@ -142,19 +153,19 @@ namespace Kesco.Lib.DALC
 
 
         /// <summary>
-        /// Выполнить SQL инструкцию и получить DataReader. Версия с выходными параметрами
+        ///     Выполнить SQL инструкцию и получить DataReader. Версия с выходными параметрами
         /// </summary>
         /// <param name="comdText">Текст запроса или название ХП</param>
         /// <param name="type">Тип команыды - текст или хранимая процедура</param>
         /// <param name="parameters">Входные значения</param>
         /// <param name="parametersOut">Выходные параметры, для хп автоматически формируется возвращаемое значение(@RETURN_VALUE)</param>
-        private void ExecuteReader(string comdText, CommandType type, Dictionary<string, object> parameters, Dictionary<string, object> parametersOut)
+        private void ExecuteReader(string comdText, CommandType type, Dictionary<string, object> parameters,
+            Dictionary<string, object> parametersOut)
         {
             try
             {
-                using (_command = new SqlCommand(comdText, _connect) { CommandType = type })
+                using (_command = new SqlCommand(comdText, _connect) {CommandType = type})
                 {
-
                     if (parameters != null)
                         foreach (var p in parameters)
                             _command.Parameters.AddWithValue(p.Key, p.Value ?? DBNull.Value);
@@ -171,7 +182,7 @@ namespace Kesco.Lib.DALC
                     if (type == CommandType.StoredProcedure)
                     {
                         if (parametersOut == null)
-                            parametersOut = new Dictionary<string, object> { { "@RETURN_VALUE", -1 } };
+                            parametersOut = new Dictionary<string, object> {{"@RETURN_VALUE", -1}};
                         else
                             parametersOut.Add("@RETURN_VALUE", -1);
 
@@ -188,7 +199,7 @@ namespace Kesco.Lib.DALC
             }
             catch (Exception ex)
             {
-                DetailedException dex = new DetailedException(ex.Message, ex, _command);
+                var dex = new DetailedException(ex.Message, ex, _command);
                 Logger.WriteEx(dex);
                 Dispose();
                 throw dex;
@@ -196,7 +207,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Высвобождение ресурсов используемых в DBReader
+        ///     Высвобождение ресурсов используемых в DBReader
         /// </summary>
         private void ReleaseResources()
         {
@@ -218,30 +229,20 @@ namespace Kesco.Lib.DALC
                     _connect.Dispose();
                 }
 
-                if(_command != null)
+                if (_command != null)
                     _command.Dispose();
             }
             catch (Exception ex)
             {
-                DetailedException dex = new DetailedException("Ошибка высвобождения програмных ресурсов в Kesco.Lib.DALC.DBReader " + ex.Message, ex);
+                var dex = new DetailedException(
+                    "Ошибка высвобождения програмных ресурсов в Kesco.Lib.DALC.DBReader " + ex.Message, ex);
                 Logger.WriteEx(dex);
                 throw dex;
             }
         }
 
         /// <summary>
-        ///  Освобождает ресурсы, используемые объектом DBReader
-        /// </summary>
-        public void Dispose()
-        {
-            ReleaseResources();
-
-            // если высвободили ресурсы вручную или через using, то финализатор не вызываем
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        ///  Финализатор для забывчивых программистов
+        ///     Финализатор для забывчивых программистов
         /// </summary>
         ~DBReader()
         {
@@ -256,12 +257,12 @@ namespace Kesco.Lib.DALC
         #region Перопределенные методы интерфейса SqlDataReader
 
         /// <summary>
-        /// Возвращает значение, указывающее, является ли SqlDataReader содержит одну или несколько строк.
+        ///     Возвращает значение, указывающее, является ли SqlDataReader содержит одну или несколько строк.
         /// </summary>
-        public bool HasRows{ get { return _reader.HasRows; }}
+        public bool HasRows => _reader.HasRows;
 
         /// <summary>
-        ///  Возвращает имя указанного столбца.
+        ///     Возвращает имя указанного столбца.
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public string GetName(int i)
@@ -270,7 +271,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        /// Возвращает строку, представляющую тип данных указанного столбца
+        ///     Возвращает строку, представляющую тип данных указанного столбца
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public string GetDataTypeName(int i)
@@ -279,7 +280,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает тип данных объекта столбца.
+        ///     Возвращает тип данных объекта столбца.
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public Type GetFieldType(int i)
@@ -288,7 +289,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в его собственном формате
+        ///     Возвращает значение указанного столбца в его собственном формате
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public object GetValue(int i)
@@ -297,7 +298,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Заполняет массив объектов значениями столбцов текущей строки
+        ///     Заполняет массив объектов значениями столбцов текущей строки
         /// </summary>
         /// <param name="values">Массив объектов Object, в который необходимо скопировать столбцы атрибутов.</param>
         public int GetValues(object[] values)
@@ -306,7 +307,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает порядковый номер столбца с заданным именем столбца
+        ///     Возвращает порядковый номер столбца с заданным именем столбца
         /// </summary>
         /// <param name="name">Имя столбца.</param>
         public int GetOrdinal(string name)
@@ -315,7 +316,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде логического значения
+        ///     Возвращает значение указанного столбца в виде логического значения
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public bool GetBoolean(int i)
@@ -324,7 +325,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде байта
+        ///     Возвращает значение указанного столбца в виде байта
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public byte GetByte(int i)
@@ -333,7 +334,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Считывает поток байтов из указанного смещения столбца в буфер массива, начиная с заданного смещения буфера
+        ///     Считывает поток байтов из указанного смещения столбца в буфер массива, начиная с заданного смещения буфера
         /// </summary>
         /// <param name="i">Порядковый номер столбца (начиная с нуля)</param>
         /// <param name="fieldOffset">Индекс в поле, с которого начинается операция считывания</param>
@@ -347,7 +348,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде одного символа
+        ///     Возвращает значение указанного столбца в виде одного символа
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public char GetChar(int i)
@@ -356,7 +357,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Считывает поток символов из заданного смещения столбца в буфер как массив, начиная с заданного смещения буфера
+        ///     Считывает поток символов из заданного смещения столбца в буфер как массив, начиная с заданного смещения буфера
         /// </summary>
         /// <param name="i">Порядковый номер столбца (начиная с нуля)</param>
         /// <param name="fieldoffset">Индекс в поле, с которого начинается операция считывания</param>
@@ -370,7 +371,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца как глобальный уникальный идентификатор (GUID)
+        ///     Возвращает значение указанного столбца как глобальный уникальный идентификатор (GUID)
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public Guid GetGuid(int i)
@@ -379,7 +380,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде 16-разрядное целое число со знаком
+        ///     Возвращает значение указанного столбца в виде 16-разрядное целое число со знаком
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public short GetInt16(int i)
@@ -388,7 +389,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде 32-разрядное целое число со знаком
+        ///     Возвращает значение указанного столбца в виде 32-разрядное целое число со знаком
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public int GetInt32(int i)
@@ -397,7 +398,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде 64-разрядного целого числа со знаком
+        ///     Возвращает значение указанного столбца в виде 64-разрядного целого числа со знаком
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public long GetInt64(int i)
@@ -406,7 +407,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение заданного столбца в виде числа с плавающей запятой одинарной точности
+        ///     Возвращает значение заданного столбца в виде числа с плавающей запятой одинарной точности
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public float GetFloat(int i)
@@ -415,7 +416,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение заданного столбца в виде числа с плавающей запятой двойной точности
+        ///     Возвращает значение заданного столбца в виде числа с плавающей запятой двойной точности
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public double GetDouble(int i)
@@ -424,7 +425,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде строки
+        ///     Возвращает значение указанного столбца в виде строки
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public string GetString(int i)
@@ -433,7 +434,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде объекта Decimal
+        ///     Возвращает значение указанного столбца в виде объекта Decimal
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public decimal GetDecimal(int i)
@@ -442,7 +443,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение указанного столбца в виде объекта DateTime
+        ///     Возвращает значение указанного столбца в виде объекта DateTime
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public DateTime GetDateTime(int i)
@@ -451,7 +452,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает IDataReader для указанного порядкового номера столбца
+        ///     Возвращает IDataReader для указанного порядкового номера столбца
         /// </summary>
         /// <param name="i">Порядковый номер столбца.</param>
         public IDataReader GetData(int i)
@@ -460,7 +461,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение, указывающее, содержит ли столбец несуществующие или отсутствующие значения
+        ///     Возвращает значение, указывающее, содержит ли столбец несуществующие или отсутствующие значения
         /// </summary>
         /// <param name="i">Порядковый номер столбца (от нуля)</param>
         public bool IsDBNull(int i)
@@ -469,40 +470,30 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает число столбцов в текущей строке
+        ///     Возвращает число столбцов в текущей строке
         /// </summary>
-        public int FieldCount
-        {
-            get { return _reader.FieldCount; }
-        }
+        public int FieldCount => _reader.FieldCount;
 
         /// <summary>
-        ///  Возвращает объект по индексу
+        ///     Возвращает объект по индексу
         /// </summary>
         /// <param name="i"> индекс объекта</param>
-        object IDataRecord.this[int i]
-        {
-            get { return _reader; }
-        }
+        object IDataRecord.this[int i] => _reader;
 
         /// <summary>
-        ///  Возвращает объект по индексу
+        ///     Возвращает объект по индексу
         /// </summary>
         /// <param name="name"> индекс объекта</param>
-        object IDataRecord.this[string name]
-        {
-            get { return _reader; }
-        }
+        object IDataRecord.this[string name] => _reader;
 
         /// <summary>
-        ///  Закрывает подключение к базе данных и объект SqlDataReader
+        ///     Закрывает подключение к базе данных и объект SqlDataReader
         /// </summary>
         public void Close()
         {
+            if (!_reader.IsClosed)
+                _reader.Close();
 
-             if (!_reader.IsClosed)
-                 _reader.Close();
-           
 
             if (_connect.State != ConnectionState.Closed)
                 _connect.Close();
@@ -519,7 +510,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает объект DataTable, описывающий метаданные столбцов модуля чтения данных SqlDataReader
+        ///     Возвращает объект DataTable, описывающий метаданные столбцов модуля чтения данных SqlDataReader
         /// </summary>
         public DataTable GetSchemaTable()
         {
@@ -527,7 +518,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Перемещает модуль чтения данных к следующему результату при чтении результатов пакетных инструкций Transact-SQL
+        ///     Перемещает модуль чтения данных к следующему результату при чтении результатов пакетных инструкций Transact-SQL
         /// </summary>
         public bool NextResult()
         {
@@ -535,7 +526,7 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Перемещает SqlDataReader к следующей записи
+        ///     Перемещает SqlDataReader к следующей записи
         /// </summary>
         public bool Read()
         {
@@ -543,19 +534,19 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        ///  Возвращает значение, указывающее глубину вложенности для текущей строки
+        ///     Возвращает значение, указывающее глубину вложенности для текущей строки
         /// </summary>
-        public int Depth { get { return _reader.Depth; }}
+        public int Depth => _reader.Depth;
 
         /// <summary>
-        ///  Возвращает логическое значение, указывающее, является ли указанный SqlDataReader Закрыть экземпляр
+        ///     Возвращает логическое значение, указывающее, является ли указанный SqlDataReader Закрыть экземпляр
         /// </summary>
-        public bool IsClosed { get { return _reader.IsClosed; }}
+        public bool IsClosed => _reader.IsClosed;
 
         /// <summary>
-        ///  Возвращает номер строки изменены, вставлены или удалены инструкцией Transact-SQL
+        ///     Возвращает номер строки изменены, вставлены или удалены инструкцией Transact-SQL
         /// </summary>
-        public int RecordsAffected { get { return _reader.RecordsAffected; }}
+        public int RecordsAffected => _reader.RecordsAffected;
 
         #endregion
     }

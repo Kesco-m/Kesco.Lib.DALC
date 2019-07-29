@@ -23,7 +23,11 @@ namespace Kesco.Lib.DALC
         /// </summary>
         /// <param name="tableName">Название таблицы/представления, через которую происходит изменение данных</param>
         /// <param name="recordSource">Источник данных для заполнения объекта, если не указан используется tableName</param>
-        /// /// <param name="recordsSource">Источник данных для заполнения списка объектов объекта, если не указан используется tableName</param>
+        /// ///
+        /// <param name="recordsSource">
+        ///     Источник данных для заполнения списка объектов объекта, если не указан используется
+        ///     tableName
+        /// </param>
         public DBSourceAttribute(string tableName, string recordSource, string recordsSource)
         {
             TableName = tableName;

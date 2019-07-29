@@ -8,17 +8,6 @@ namespace Kesco.Lib.DALC
     /// </summary>
     public class DBCommand
     {
-
-        /// <summary>
-        /// Цель, назначение или описание команды
-        /// </summary>
-        public string Appointment { get; set; }
-
-        /// <summary>
-        /// Код сущности
-        /// </summary>
-        public string EntityId { get; set; }
-
         /// <summary>
         ///     Словарь входящих параметров
         /// </summary>
@@ -28,6 +17,16 @@ namespace Kesco.Lib.DALC
         ///     Словарь исходящих параметров
         /// </summary>
         public Dictionary<string, object> ParamsOut;
+
+        /// <summary>
+        ///     Цель, назначение или описание команды
+        /// </summary>
+        public string Appointment { get; set; }
+
+        /// <summary>
+        ///     Код сущности
+        /// </summary>
+        public string EntityId { get; set; }
 
         /// <summary>
         ///     Строка подключения

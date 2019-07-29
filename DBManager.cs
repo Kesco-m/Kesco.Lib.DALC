@@ -5,8 +5,8 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using Kesco.Lib.Log;
 using System.Text;
+using Kesco.Lib.Log;
 
 namespace Kesco.Lib.DALC
 {
@@ -21,15 +21,17 @@ namespace Kesco.Lib.DALC
         public enum ParameterTypes
         {
             /// <summary>
-            /// Int32
+            ///     Int32
             /// </summary>
             [StringValue("System.Int32")] Int32 = 1,
+
             /// <summary>
-            /// Decimal
+            ///     Decimal
             /// </summary>
             [StringValue("System.Decimal")] Decimal = 2,
+
             /// <summary>
-            /// String
+            ///     String
             /// </summary>
             [StringValue("System.String")] String = 3
         }
@@ -46,12 +48,9 @@ namespace Kesco.Lib.DALC
 
             var fi = type.GetField(value.ToString());
             var attrs =
-                fi.GetCustomAttributes(typeof (StringValueAttribute),
+                fi.GetCustomAttributes(typeof(StringValueAttribute),
                     false) as StringValueAttribute[];
-            if (attrs.Length > 0)
-            {
-                output = attrs[0].Value;
-            }
+            if (attrs.Length > 0) output = attrs[0].Value;
 
             return output;
         }
@@ -66,7 +65,7 @@ namespace Kesco.Lib.DALC
         public static object GetReaderValue(DBReader dbReader, Type type, int ordinal)
         {
             object value = null;
-            Type propertyType = Nullable.GetUnderlyingType(type);
+            var propertyType = Nullable.GetUnderlyingType(type);
 
             if (propertyType != null)
                 type = propertyType;
@@ -74,27 +73,28 @@ namespace Kesco.Lib.DALC
             switch (type.FullName)
             {
                 case "System.Int32":
-                    value = dbReader.IsDBNull(ordinal) ? (int?)null : dbReader.GetInt32(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (int?) null : dbReader.GetInt32(ordinal);
                     break;
                 case "System.String":
-                    value = dbReader.IsDBNull(ordinal) ? "": dbReader.GetString(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? "" : dbReader.GetString(ordinal);
                     break;
                 case "System.DateTime":
-                    value = dbReader.IsDBNull(ordinal) ? (DateTime?)null : dbReader.GetDateTime(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (DateTime?) null : dbReader.GetDateTime(ordinal);
                     break;
                 case "System.Double":
-                    value = dbReader.IsDBNull(ordinal) ? (double?)null : dbReader.GetDouble(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (double?) null : dbReader.GetDouble(ordinal);
                     break;
                 case "System.Decimal":
-                    value = dbReader.IsDBNull(ordinal) ? (decimal?)null : dbReader.GetDecimal(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (decimal?) null : dbReader.GetDecimal(ordinal);
                     break;
                 case "System.Boolean":
-                    value = dbReader.IsDBNull(ordinal) ? (bool?)null : dbReader.GetBoolean(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (bool?) null : dbReader.GetBoolean(ordinal);
                     break;
                 case "System.Byte":
-                    value = dbReader.IsDBNull(ordinal) ? (byte?)null : dbReader.GetByte(ordinal);
+                    value = dbReader.IsDBNull(ordinal) ? (byte?) null : dbReader.GetByte(ordinal);
                     break;
             }
+
             return value;
         }
 
@@ -112,31 +112,27 @@ namespace Kesco.Lib.DALC
             Type type = null;
 
             foreach (var key in args.Keys)
-            {
                 if (args[key] != null && args[key].GetType().Equals(typeof(object[])))
-                {                    
-                    vals = (object[])args[key];
-                    _type = GetStringValue((ParameterTypes)vals[1]);
+                {
+                    vals = (object[]) args[key];
+                    _type = GetStringValue((ParameterTypes) vals[1]);
                     type = Type.GetType(_type);
-                    if ((vals[0].ToString().Length == 0 && !type.Equals(typeof(string)))
-                        || (type.Equals(typeof(DateTime)) && vals[0] != null && vals[0].Equals(DateTime.MinValue)))
+                    if (vals[0].ToString().Length == 0 && !type.Equals(typeof(string))
+                        || type.Equals(typeof(DateTime)) && vals[0] != null && vals[0].Equals(DateTime.MinValue))
                         cmd.Parameters.AddWithValue(key, DBNull.Value);
                     else
-                    {
                         cmd.Parameters.AddWithValue(key,
                             TypeDescriptor.GetConverter(type).ConvertFromInvariantString(vals[0].ToString()));
-                    }
                 }
                 else
                 {
                     if (args[key] == null
-                        || (args[key].GetType().Equals(typeof(DateTime)) && args[key].Equals(DateTime.MinValue))
-                        )
+                        || args[key].GetType().Equals(typeof(DateTime)) && args[key].Equals(DateTime.MinValue)
+                    )
                         cmd.Parameters.AddWithValue(key, DBNull.Value);
                     else
                         cmd.Parameters.AddWithValue(key, args[key]);
                 }
-            }
         }
 
         #endregion
@@ -213,13 +209,14 @@ namespace Kesco.Lib.DALC
                     if (i > 0) filter += " AND ";
                     filter += localParams[i];
                 }
+
                 filter = @" 
 WHERE (" + filter + ")";
 
                 sql = string.Format(sql, filter);
             }
 
-            if ((localParams == null || localParams.Count == 0))
+            if (localParams == null || localParams.Count == 0)
                 sql = string.Format(sql, "");
 
             #endregion
@@ -227,7 +224,6 @@ WHERE (" + filter + ")";
             #region Оборачиваем запрос во внешний SELECT для добавления группировки 
 
             if (ctype.Equals(CommandType.Text) && columnList != null)
-            {
                 if (groupByList != null && groupByList.FirstOrDefault(x => x.Value).Value)
                 {
                     var groupField = from p in groupByList
@@ -238,19 +234,20 @@ WHERE (" + filter + ")";
 SELECT ";
 
                     foreach (var f in columnList)
-                    {
                         if (f.Key.Equals(groupByList.FirstOrDefault(x => x.Key == f.Key && x.Value).Key))
+                        {
                             sGroup += " " + f.Key + ",";
+                        }
                         else
                         {
-                            if (f.Value.Equals(typeof (String)))
+                            if (f.Value.Equals(typeof(string)))
                                 sGroup += string.Format(" '' {0},", f.Key);
-                            else if (f.Value.Equals(typeof (Decimal)))
+                            else if (f.Value.Equals(typeof(decimal)))
                                 sGroup += string.Format(" SUM({0}) {0},", f.Key);
                             else
                                 sGroup += string.Format(" NULL {0},", f.Key);
                         }
-                    }
+
                     sql = sGroup.Substring(0, sGroup.Length - 1) + string.Format(@" 
 FROM 
 ({0}) TGroup 
@@ -261,7 +258,6 @@ GROUP BY ", sql);
 
                     sql = sql.Substring(0, sql.Length - 1);
                 }
-            }
 
             #endregion
 
@@ -278,7 +274,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             DataTable dtSchema = null;
 
             conn = new SqlConnection(cn);
-            
+
             var cm = new SqlCommand(sql, conn);
             cm.CommandType = ctype;
 
@@ -294,33 +290,30 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
 
             var pageNum = int.Parse(_pageNum);
             var itemsPerPage = int.Parse(_itemsPerPage);
-            var index = (pageNum - 1)*itemsPerPage;
+            var index = (pageNum - 1) * itemsPerPage;
 
 
-           
             _sRez = "0";
             try
             {
                 if (pageNum > 0)
                 {
                     #region Если требуется постраничная разбивка данных используем DataReader
-                    
+
                     conn.Open();
                     dr = cm.ExecuteReader(CommandBehavior.CloseConnection);
                     dtSchema = dr.GetSchemaTable();
 
                     if (dtSchema != null)
-                    {
                         foreach (DataRow drow in dtSchema.Rows)
                         {
                             var columnName = Convert.ToString(drow["ColumnName"]);
-                            var column = new DataColumn(columnName, (Type) (drow["DataType"]));
+                            var column = new DataColumn(columnName, (Type) drow["DataType"]);
                             column.Unique = (bool) drow["IsUnique"];
                             column.AllowDBNull = (bool) drow["AllowDBNull"];
                             column.AutoIncrement = (bool) drow["IsAutoIncrement"];
                             dt.Columns.Add(column);
                         }
-                    }
 
                     var i = 0;
                     var n = 0;
@@ -338,10 +331,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         if (i >= index && n < itemsPerPage)
                         {
                             var dataRow = dt.NewRow();
-                            for (var j = 0; j < dt.Columns.Count; j++)
-                            {
-                                dataRow[dt.Columns[j]] = dr[j];
-                            }
+                            for (var j = 0; j < dt.Columns.Count; j++) dataRow[dt.Columns[j]] = dr[j];
                             dt.Rows.Add(dataRow);
                             n++;
                         }
@@ -349,19 +339,17 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         #region Суммируем значения необходимых полей
 
                         if (sumList != null)
-                        {
                             for (var j = 0; j < sumListCloneKeys.Count; j++)
                                 sumList[sumListCloneKeys[j]] +=
                                     Convert.ToDecimal(dr.GetValue(dr.GetOrdinal(sumListCloneKeys[j])));
-                        }
 
                         #endregion
 
                         i++;
                     }
 
-                    _pageCount = ((int) Math.Ceiling(i/(double) itemsPerPage)).ToString();
-                    _pageNum = (pageNum == 0) ? "1" : pageNum.ToString();
+                    _pageCount = ((int) Math.Ceiling(i / (double) itemsPerPage)).ToString();
+                    _pageNum = pageNum == 0 ? "1" : pageNum.ToString();
                     _itemsPerPage = itemsPerPage.ToString();
                     _sRez = i.ToString();
 
@@ -373,9 +361,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                     conn.Open();
                     dr = cm.ExecuteReader(CommandBehavior.CloseConnection);
                     dt.Load(dr);
-                   
                 }
-                    
             }
             catch (Exception ex)
             {
@@ -388,6 +374,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                 if (dr != null) dr.Close();
                 if (conn != null && conn.State != ConnectionState.Closed) conn.Close();
             }
+
             return dt;
         }
 
@@ -418,8 +405,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         cmd.CommandType = type;
 
                         if (parameters != null)
-                            foreach (var p in parameters)
-                                cmd.Parameters.AddWithValue(p.Key, p.Value);
+                            FillQueryArgsCollection(parameters, cmd);
 
                         if (parametersOut != null)
                             foreach (var p in parametersOut)
@@ -455,11 +441,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             }
             catch (SqlException ex)
             {
-                StringBuilder sb = new StringBuilder();
+                var sb = new StringBuilder();
                 var fl = false;
                 foreach (SqlError e in ex.Errors)
-                {
-                    if (e.Number != 3609)//Транзакция завершилась в триггере. Выполнение пакета прервано.
+                    if (e.Number != 3609) //Транзакция завершилась в триггере. Выполнение пакета прервано.
                     {
                         if (sb.Length > 0) sb.Append(Environment.NewLine);
 
@@ -472,9 +457,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                             fl = true;
                         }
                         else
+                        {
                             sb.Append(e.Message);
+                        }
                     }
-                }
 
                 DetailedException dex = null;
                 if (sb.Length < 1) dex = new DetailedException(ex.Message, ex, cmd);
@@ -556,11 +542,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             }
             catch (SqlException ex)
             {
-                StringBuilder sb = new StringBuilder();
+                var sb = new StringBuilder();
                 var fl = false;
                 foreach (SqlError e in ex.Errors)
-                {
-                    if (e.Number != 3609)//Транзакция завершилась в триггере. Выполнение пакета прервано.
+                    if (e.Number != 3609) //Транзакция завершилась в триггере. Выполнение пакета прервано.
                     {
                         if (sb.Length > 0) sb.Append(Environment.NewLine);
                         if (e.Number == 229 || e.Number == 230)
@@ -572,9 +557,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                             fl = true;
                         }
                         else
+                        {
                             sb.Append(e.Message);
+                        }
                     }
-                }
 
                 DetailedException dex = null;
                 if (sb.Length < 1) dex = new DetailedException(ex.Message, ex, cmd);
@@ -636,10 +622,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         cmd.CommandType = type;
                         if (parameters != null)
                             FillQueryArgsCollection(parameters, cmd);
-                            //foreach (var p in parameters)
-                            //    cmd.Parameters.AddWithValue(p.Key, p.Value);
-                       
-                          
+                        //foreach (var p in parameters)
+                        //    cmd.Parameters.AddWithValue(p.Key, p.Value);
+
+
                         if (parametersOut != null)
                             foreach (var p in parametersOut)
                             {

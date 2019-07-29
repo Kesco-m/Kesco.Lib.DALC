@@ -3,17 +3,18 @@
 namespace Kesco.Lib.DALC
 {
     /// <summary>
-    /// Класс, реализующий аттрибут, которым помечается значение в Enum, для последующего получения текствого описания значения Enum
+    ///     Класс, реализующий аттрибут, которым помечается значение в Enum, для последующего получения текствого описания
+    ///     значения Enum
     /// </summary>
     public class StringValueAttribute : Attribute
     {
         /// <summary>
-        /// Значение аттрибута
+        ///     Значение аттрибута
         /// </summary>
         private readonly string _value;
 
         /// <summary>
-        /// Метод установки значения
+        ///     Метод установки значения
         /// </summary>
         /// <param name="value">Значение</param>
         public StringValueAttribute(string value)
@@ -22,13 +23,8 @@ namespace Kesco.Lib.DALC
         }
 
         /// <summary>
-        /// Значение аттрибута
+        ///     Значение аттрибута
         /// </summary>
-        public string Value
-        {
-            get { return _value; }
-        }
+        public string Value => _value;
     }
-
-
 }

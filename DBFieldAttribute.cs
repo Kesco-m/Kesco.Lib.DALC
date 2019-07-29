@@ -8,7 +8,7 @@ namespace Kesco.Lib.DALC
     public class DBFieldAttribute : Attribute
     {
         /// <summary>
-        ///  Данный конструктор использовать только для инициализации поля первичного ключа
+        ///     Данный конструктор использовать только для инициализации поля первичного ключа
         /// </summary>
         /// <param name="fieldName">Название поля первичного ключа</param>
         /// <param name="defaultValue">Значение по-умолчанию</param>
@@ -29,7 +29,8 @@ namespace Kesco.Lib.DALC
         /// <param name="paramName">Название параметра в sql-запросе</param>
         /// <param name="isUpdateble">Поле является обновляемым</param>
         /// <param name="isLinkParent">Ссылка на родительскую таблицу</param>
-        public DBFieldAttribute(string fieldName, string paramName = "", bool isUpdateble = true, bool isLinkParent = false)
+        public DBFieldAttribute(string fieldName, string paramName = "", bool isUpdateble = true,
+            bool isLinkParent = false)
         {
             FieldName = fieldName;
             IsPK = false;
@@ -44,7 +45,7 @@ namespace Kesco.Lib.DALC
         /// </summary>
         public string FieldName { get; set; }
 
-          /// <summary>
+        /// <summary>
         ///     Название поля БД
         /// </summary>
         public string ParamName { get; set; }
