@@ -75,4 +75,19 @@ namespace Kesco.Lib.DALC
         /// </summary>
         public object DefaultValue { get; set; }
     }
+
+    /// <summary>
+    ///     Класс, реализующий возможность отметки поля Binder как поля в таблице БД
+    /// </summary>
+    public class BinderDBFieldAttribute : DBFieldAttribute
+    {
+        /// <summary>
+        ///     Конструктор для любого поля, кроме первичного ключа
+        /// </summary>
+        /// <param name="fieldName">Название поля БД</param>
+        public BinderDBFieldAttribute(string fieldName) 
+            : base(fieldName)
+        {
+        }
+    }
 }

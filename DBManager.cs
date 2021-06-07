@@ -160,13 +160,37 @@ namespace Kesco.Lib.DALC
         /// <returns>Возвращает DataTable с результами запроса</returns>
         public static DataTable GetData(string sql, string cn, CommandType ctype, Dictionary<string, object> args)
         {
-            var _pageNum = "-1";
-            var _itemsPerPage = "-1";
-            var _pageCount = "-1";
-            var _sRez = "";
+            var _pageNum = -1;
+            var _itemsPerPage = -1;
+            var _pageCount = -1;
+            var _sRez = 0;
 
             return GetData(sql, cn, ctype, args, null, "", "", null, null, null, ref _pageNum, ref _itemsPerPage,
                 ref _pageCount, out _sRez);
+        }
+
+
+#pragma warning disable CS1573 // Параметр "sortBigData" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+#pragma warning disable CS1573 // Параметр "bigdata" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+        /// <summary>
+        ///     Выполнение переданного sql
+        /// </summary>
+        /// <param name="sql">Текст запроса, который необходимо выполнить</param>
+        /// <param name="cn">Строка подключения</param>
+        /// <param name="ctype">Тип sql-команды</param>
+        /// <param name="args">Словарь с параметрами: Название параметра с @; значение параметра</param>
+        /// <param name="_pageNum">Номер текущей страницы на форме списка</param>
+        /// <param name="_itemsPerPage">Количество выводимых записей на страницу</param>
+        /// <param name="_pageCount">Общее количество страниц</param>
+        /// <param name="_sRez">Количество найденных записей</param>
+        /// <returns>Возвращает DataTable с результами запроса</returns>
+        public static DataTable GetData(string sql, string cn, CommandType ctype, Dictionary<string, object> args, ref int _pageNum, ref int _itemsPerPage, ref int _pageCount, out int _sRez, bool bigdata = false, string sortBigData = "")
+#pragma warning restore CS1573 // Параметр "bigdata" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+#pragma warning restore CS1573 // Параметр "sortBigData" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+        {
+          
+            return GetData(sql, cn, ctype, args, null, "", "", null, null, null, ref _pageNum, ref _itemsPerPage,
+                ref _pageCount, out _sRez, bigdata, sortBigData);
         }
 
         /// <summary>
@@ -195,7 +219,11 @@ namespace Kesco.Lib.DALC
             string _sort, string _defaultSort,
             Dictionary<string, Type> columnList, Dictionary<string, bool> groupByList,
             Dictionary<string, decimal> sumList,
-            ref string _pageNum, ref string _itemsPerPage, ref string _pageCount, out string _sRez)
+#pragma warning disable CS1573 // Параметр "bigdata" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, StringCollection, string, string, Dictionary<string, Type>, Dictionary<string, bool>, Dictionary<string, decimal>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+#pragma warning disable CS1573 // Параметр "sortBigData" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, StringCollection, string, string, Dictionary<string, Type>, Dictionary<string, bool>, Dictionary<string, decimal>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+            ref int _pageNum, ref int _itemsPerPage, ref int _pageCount, out int _sRez, bool bigdata = false, string sortBigData = "")
+#pragma warning restore CS1573 // Параметр "sortBigData" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, StringCollection, string, string, Dictionary<string, Type>, Dictionary<string, bool>, Dictionary<string, decimal>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
+#pragma warning restore CS1573 // Параметр "bigdata" не имеет совпадающего тега param в комментарии XML для "DBManager.GetData(string, string, CommandType, Dictionary<string, object>, StringCollection, string, string, Dictionary<string, Type>, Dictionary<string, bool>, Dictionary<string, decimal>, ref int, ref int, ref int, out int, bool, string)" (в отличие от остальных параметров)
         {
             var dt = new DataTable("Data");
 
@@ -273,6 +301,32 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
             SqlDataReader dr = null;
             DataTable dtSchema = null;
 
+            if (bigdata && !ctype.Equals(CommandType.Text))
+                throw new Exception("Для работы в режиме BigData можно использовать только CommandType.Text");
+            
+            if (_itemsPerPage == 0) _itemsPerPage = 2;
+
+            var pageNum = _pageNum == 0 ? 1 : _pageNum;
+            var itemsPerPage = _itemsPerPage;
+            var index = (pageNum - 1) * itemsPerPage;
+
+
+            if (bigdata && _pageNum > -1)
+            {
+                sql = string.Format(@"
+WITH BigData AS  
+(  
+    SELECT *,
+    ROW_NUMBER() OVER (ORDER BY {0}) AS RowNumber  
+    FROM ({1}) X_DB
+   
+)   
+SELECT	*    
+FROM	BigData   
+WHERE	RowNumber BETWEEN {2} AND {3} 
+", string.IsNullOrEmpty(sortBigData)? "(SELECT NULL)": sortBigData, sql, index + 1, index + itemsPerPage + 1);
+            }
+
             conn = new SqlConnection(cn);
 
             var cm = new SqlCommand(sql, conn);
@@ -284,18 +338,13 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                 FillQueryArgsCollection(args, cm);
 
             #endregion
-
-            if (_pageNum.Length == 0) _pageNum = "1";
-            if (_itemsPerPage.Length == 0) _itemsPerPage = "2";
-
-            var pageNum = int.Parse(_pageNum);
-            var itemsPerPage = int.Parse(_itemsPerPage);
-            var index = (pageNum - 1) * itemsPerPage;
+           
 
 
-            _sRez = "0";
+            _sRez = 0;
             try
             {
+
                 if (pageNum > 0)
                 {
                     #region Если требуется постраничная разбивка данных используем DataReader
@@ -326,9 +375,10 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                             sumList[sumListCloneKeys[j]] = 0;
                     }
 
+
                     while (dr.Read())
                     {
-                        if (i >= index && n < itemsPerPage)
+                        if (i >= index && n < itemsPerPage || bigdata && i < itemsPerPage)
                         {
                             var dataRow = dt.NewRow();
                             for (var j = 0; j < dt.Columns.Count; j++) dataRow[dt.Columns[j]] = dr[j];
@@ -339,19 +389,28 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                         #region Суммируем значения необходимых полей
 
                         if (sumList != null)
-                            for (var j = 0; j < sumListCloneKeys.Count; j++)
-                                sumList[sumListCloneKeys[j]] +=
-                                    Convert.ToDecimal(dr.GetValue(dr.GetOrdinal(sumListCloneKeys[j])));
+                            foreach (var t in sumListCloneKeys)
+                                sumList[t] +=
+                                    Convert.ToDecimal(dr.GetValue(dr.GetOrdinal(t)));
 
                         #endregion
 
                         i++;
                     }
 
-                    _pageCount = ((int) Math.Ceiling(i / (double) itemsPerPage)).ToString();
-                    _pageNum = pageNum == 0 ? "1" : pageNum.ToString();
-                    _itemsPerPage = itemsPerPage.ToString();
-                    _sRez = i.ToString();
+                    if (!bigdata)
+                    {
+                        _pageCount = ((int) Math.Ceiling(i / (double) itemsPerPage));
+                        _sRez = i;
+                    }
+                    else
+                    {
+                        _pageCount = i > itemsPerPage ? pageNum + 1 : pageNum;
+                        _sRez =  (pageNum - 1) * itemsPerPage + i;
+                    }
+
+                    _pageNum = pageNum == 0 ? 1 : pageNum;
+                    _itemsPerPage = itemsPerPage;
 
                     #endregion
                 }
@@ -390,8 +449,9 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
         /// <param name="cn">Строка соединения</param>
         /// <param name="parameters">Входные значения</param>
         /// <param name="parametersOut">Выходные параметры, для хп автоматически формируется возвращаемое значение(@RETURN_VALUE)</param>
+        /// <param name="timeout">Timeout выполнения в секундах</param>
         public static void ExecuteNonQuery(string comdText, CommandType type, string cn,
-            Dictionary<string, object> parameters = null, Dictionary<string, object> parametersOut = null)
+            Dictionary<string, object> parameters = null, Dictionary<string, object> parametersOut = null, int timeout = 30)
         {
             SqlConnection connect = null;
             SqlCommand cmd = null;
@@ -403,6 +463,7 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                     using (cmd = new SqlCommand(comdText, connect))
                     {
                         cmd.CommandType = type;
+                        cmd.CommandTimeout = timeout;
 
                         if (parameters != null)
                             FillQueryArgsCollection(parameters, cmd);
@@ -656,6 +717,35 @@ ORDER BY " + (_sort.Length == 0 ? _defaultSort : _sort);
                                 parametersOut[p] = cmd.Parameters[p].Value;
                     }
                 }
+            }
+            catch (SqlException ex)
+            {
+                var sb = new StringBuilder();
+                var fl = false;
+                foreach (SqlError e in ex.Errors)
+                    if (e.Number != 3609) //Транзакция завершилась в триггере. Выполнение пакета прервано.
+                    {
+                        if (sb.Length > 0) sb.Append(Environment.NewLine);
+
+                        if (e.Number == 229 || e.Number == 230)
+                        {
+                            if (fl) continue;
+                            sb.Append("У Вас нет прав для данной операции! ");
+                            sb.Append(Environment.NewLine);
+                            sb.Append("You are not authorized for this operation!");
+                            fl = true;
+                        }
+                        else
+                        {
+                            sb.Append(e.Message);
+                        }
+                    }
+
+                DetailedException dex = null;
+                if (sb.Length < 1) dex = new DetailedException(ex.Message, ex, cmd);
+                else dex = new DetailedException(sb.ToString(), ex, cmd);
+                Logger.WriteEx(dex);
+                throw dex;
             }
             catch (Exception ex)
             {
